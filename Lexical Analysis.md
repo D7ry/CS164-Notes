@@ -33,11 +33,12 @@ Token corresponds to sets of strings
 ### Regular Languages
 Regular languages is the most popular way to define tokens.  
 Regular languages can be described using *regex*
-- For each regex, there is a **finite autometa**[^f1] that recognizes the language
+- For each regex, there is a deterministic **finite autometa**[^f1] that recognizes the language
+- the state machine drops any string not matching its regex; there exists an implicit "bad state" to which all other states can transition to reject a regex.
 
 If `A` is a regular expressio,  `L(A)` is the language denoted by `A`
 
-*Language*
+**Language**
 Def: Let L be a set of strings. L is a language if for every string s in L, there exists a finite sequence of strings s1, s2, ..., sn such that s = s1s2...sn
 - Alphabet = English Chars, Language = English Sentences
 - Alphabet = ASCII, Language = C programs
@@ -107,4 +108,39 @@ R = R<sub>1</sub> | R<sub>2</sub> | ... | R<sub>n</sub> | error
 The lexer tool picks only the **shortest** none-empty match.
 Multiple, consecutive error tokens are merged into one.
 
+# Finite Autometa
+## NFA Vs. DFA
+DFA - completely determined by input
+
+NFA - NFAs can choose whether to make *epsilon moves*(moves that don't consume any input); NFAs also has one-deterministic transitions from one state to another.
+
+NFA is much easier to implement than DFA, but DFA can simulate NFA.
+
+## NFA to DFA
+
+1. Start with NFA
+2. Simulate all possible inputs, and record all possible states
+3. For each input, group all possible NFA state outcomes into a single DFA state
+
+pseudo-algorithm(maybe wrong)
+```python
+#nfaStateGroup is a subset of nfaStates
+map<nfaStateGroup, map<action, nfaStateGroup>> dfaStateActionMap
+list actions = [...]
+def do(nfaStateGroup):
+  if nfaStateGroup in dfaStateActionMap:
+    return
+  dfaStateActionMap[nfaStateGroup] = {}
+  for nfaState in nfaStateGroup:
+    for action in actions
+     ...
+        
+do({{startState, [(epsilon, startState)]}})
+
+```
+
+## REGEX to NFA
+more on [lecture slides](https://drive.google.com/file/d/15Cq6EwE17AmH7rxYtwfncWs2f6fVpOXh/view)
+
 [^f1]: Finite Autometa - a machine that accepts or rejects strings of symbols and only produces a result after it has read all of its input. It is a finite state machine that has no loops in the sense that there is a finite number of states and every state is reachable from every other state by a finite number of transitions. [Wikipedia](https://en.wikipedia.org/wiki/Finite-state_machine
+
