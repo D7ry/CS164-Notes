@@ -116,13 +116,39 @@ NFA - NFAs can choose whether to make *epsilon moves*(moves that don't consume a
 
 NFA is much easier to implement than DFA, but DFA can simulate NFA.
 
+## $\varepsilon$ -NFA to NFA
+Somehow this part is not covered in the slides wtf lol; but it's explained nicely [here](https://www.geeksforgeeks.org/conversion-of-epsilon-nfa-to-nfa/)
+
+pseud code:
+```python
+epsilon_moves = [...]
+for epsilon_move in epsilon_moves:
+  v1 = epsilon_move.src
+  v2 = epsilon_move.dest
+  for move in v2.moves:
+    v1.add_move(move.input, move.dest)
+  v1.remove(epsilon_move)
+  if v1.is_start_state:
+    v2.is_start_state = True
+  if v2.is_final_state:
+    v1.is_final_state = True
+```
+
+1. Consider the two vertexes having the epsilon move. Here in Fig.1 we have vertex v1 and vertex v2 having epsilon move from v1 to v2. 
+
+2. Now find all the moves to any other vertex that start from vertex v2 (other than the epsilon move that is considering). After finding the moves, duplicate all the moves that start from vertex v2, with the same input to start from vertex v1 and remove the epsilon move from vertex v1 to vertex v2.
+
+3. See that if the vertex v1 is a start state or not. If vertex v1 is a start state, then we will also make vertex v2 as a start state. If vertex v1 is not a start state, then there will not be any change. 
+
+4. See that if the vertex v2 is a final state or not. If vertex v2 is a final state, then we will also make vertex v1 as a final state. If vertex v2 is not a final state, then there will not be any change. Repeat the steps(from step 1 to step 4) until all the epsilon moves are removed from the NFA.
+
 ## NFA to DFA
 
 1. Start with NFA
 2. Simulate all possible inputs, and record all possible states
 3. For each input, group all possible NFA state outcomes into a single DFA state
 
-pseudo-algorithm(maybe wrong)
+pseudo-algorithm
 ```python
 #nfaStateGroup is a subset of nfaStates
 map<nfaStateGroup, map<action, nfaStateGroup>> dfaStateActionMap
@@ -138,6 +164,7 @@ def do(nfaStateGroup):
 do({{startState, [(epsilon, startState)]}})
 
 ```
+[Full Algorithm](https://github.com/D7ry/CS164-Notes/blob/main/ezDFA.py)
 
 ## REGEX to NFA
 more on [lecture slides](https://drive.google.com/file/d/15Cq6EwE17AmH7rxYtwfncWs2f6fVpOXh/view)

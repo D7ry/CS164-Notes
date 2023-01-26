@@ -101,9 +101,9 @@ class graph:
 			is_start = True
 			is_final = True
 			for state in states:
-				if not state.is_start:
+				if not state.is_start: #if any of the states is not start, the new vertex is not start
 					is_start = False
-				if state.is_final:
+				if state.is_final: #if any of the states is final, the new vertex is final
 					is_final = True
 			nexts = [] #vector<pair<name, vector<vertices>>>
 			dfa_edges = [] #outgoing edges
@@ -147,4 +147,3 @@ class graph:
 		print("...done converting to dfa")
 
 		return dfa_graph
-
