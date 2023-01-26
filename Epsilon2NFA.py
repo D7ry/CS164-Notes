@@ -18,13 +18,17 @@ class graph:
 		self.name = name
 	
 	def add_vertex(self, vertex):
+		if self.vertices.get(vertex.name) != None:
+			print("Warning: vertex with name {} already exists".format(vertex.name))
+			return
 		for e in vertex.edges:
 			if e.cond == None:
 				self.epsilon_edges.append(e)
 		self.vertices[vertex.name] = vertex
 
+	#verbose mode prints out all the steps, including adding&removing additional epsilon edges
 	def remove_epsilon(self, verbose = False):
-		print("proceeding to remove epsilon edges for graph: " + self.name)
+		print("proceeding to remove epsilon edges for graph {}...".format(self.name))
 		while self.epsilon_edges != []:
 			epe = self.epsilon_edges.pop(0)
 			print("processing epsilon edge: " + epe.src + " -> " + epe.dest) if verbose else None
@@ -33,18 +37,31 @@ class graph:
 			if v1 == v2:
 				continue
 			for v2e in v2.edges:
-				v1.edges.append(e(v1.name, v2e.dest, v2e.cond))
-				print("added edge: {} -> {} on {}".format(v1.name, v2e.dest, v2e.cond)) if v2e.cond != None or verbose else None
+				new_edge = e(v1.name, v2e.dest, v2e.cond)
+				v1.edges.append(new_edge)
+				if v2e.cond == None:
+					self.epsilon_edges.append(new_edge)
+				print("added edge: {} -> {} on {}".format(v1.name, v2e.dest, v2e.cond)) if verbose else None
 			v1.edges.remove(epe)
-			print("removed edge: " + epe.src + " -> " + epe.dest)
 			if v1.is_start:
 				v2.is_start = True
-				print("vertex {} is now start".format(v2.name))
+				print("vertex {} is now start".format(v2.name)) if verbose else None
 			if v2.is_final:
 				v1.is_final = True
-				print("vertex {} is now final".format(v1.name))
+				print("vertex {} is now final".format(v1.name)) if verbose else None
 
-		print("done removing epsilon edges")
+		print("...done removing epsilon edges")
+
+	def print_graph(self):
+		print("printing graph: " + self.name)
+		for v in self.vertices.values():
+			print("vertex: " + v.name)
+			print("start: " + str(v.is_start))
+			print("final: " + str(v.is_final))
+			print("edges:")
+			for e in v.edges:
+				print("edge: " + e.src + " -> " + e.dest + " on " + str(e.cond))
+			print("")
 
 
 
@@ -66,5 +83,9 @@ g.add_vertex(v('N', [e('N', 'L', 'a')]))
 g.add_vertex(v('O', [e('O', 'Z')]))
 g.add_vertex(v('Z', [], is_final=True))
 
-g.remove_epsilon()
+g.print_graph()
+
+g.remove_epsilon(False)
+
+g.print_graph()
 
