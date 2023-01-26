@@ -16,6 +16,7 @@ class graph:
 		self.vertices = dict()
 		self.epsilon_edges = []
 		self.name = name
+		self.conds = []
 	
 	def add_vertex(self, vertex):
 		if self.vertices.get(vertex.name) != None:
@@ -25,6 +26,13 @@ class graph:
 			if e.cond == None:
 				self.epsilon_edges.append(e)
 		self.vertices[vertex.name] = vertex
+		#add action
+		for e in vertex.edges:
+			if e.cond != None and e.cond not in self.conds:
+				self.conds.append(e.cond)
+
+	def get_vertex(self, name):
+		return self.vertices.get(name)
 
 	#verbose mode prints out all the steps, including adding&removing additional epsilon edges
 	def remove_epsilon(self, verbose = False):
@@ -55,6 +63,7 @@ class graph:
 
 	def print_graph(self):
 		print("printing graph: " + self.name)
+		edge_count = 0
 		for v in self.vertices.values():
 			print("vertex: " + v.name)
 			print("start: " + str(v.is_start))
@@ -62,7 +71,73 @@ class graph:
 			print("edges:")
 			for e in v.edges:
 				print("edge: " + e.src + " -> " + e.dest + " on " + str(e.cond))
+				edge_count += 1
 			print("")
+		print("done. Total vertices: {}, total edges: {}".format(len(self.vertices), edge_count))
+
+	def print_drawing_data(self):
+		#every vertex name with a new line
+		for v in self.vertices.values():
+			print(v.name)
+		#edge src, edge dest, edge cond
+		for v in self.vertices.values():
+			for e in v.edges:
+				print(e.src + " " + e.dest + " " + str(e.cond))
+
+	def to_dfa(self):
+
+		print("converting graph {} to dfa...".format(self.name))
+		dfa_graph = graph("dfa_" + self.name)
+		
+		pairs = set() #set of edges that have already been traced
+		traced = set() #set of vertices that have already been traced
+		def trace_vertex(states : list):
+			vertex_name = ""
+			is_start = True
+			is_final = True
+			for state in states:
+				vertex_name += state.name
+				if not state.is_start:
+					is_start = False
+				if state.is_final:
+					is_final = True
+			print("tracing vertex: " + vertex_name)
+			if vertex_name == "MG":
+				print("DEBUg")
+
+			edges = [] #outgoing edges
+			for cond in self.conds:
+				next_states = []
+				next_name = ""
+				for state in states:
+					for edge in state.edges:
+						if edge.cond == cond:
+							vertex = self.get_vertex(edge.dest)
+							if vertex not in next_states:
+								next_states.append(vertex)
+								next_name += edge.dest
+				hash = vertex_name + '->' + next_name + ' on ' + cond #workaround
+				if next_states != [] and hash not in pairs:
+					pairs.add(hash)
+					edges.append(e(vertex_name, next_name, cond))
+					print("adding edge: " + vertex_name + " -> " + next_name + " on " + cond)
+					if next_name not in traced:
+						traced.add(next_name)
+						trace_vertex(next_states)
+			print("adding vertex: " + vertex_name)
+			if vertex_name == "F":
+				print("debug")
+
+			dfa_graph.add_vertex(v(vertex_name, edges, is_start, is_final))
+
+		start_states = [v for v in self.vertices.values() if v.is_start]
+		trace_vertex(start_states)
+		print("...done converting to dfa")
+
+		return dfa_graph
+
+
+		
 
 
 
@@ -86,7 +161,13 @@ g.add_vertex(v('Z', [], is_final=True))
 
 g.print_graph()
 
-g.remove_epsilon(False)
+g.remove_epsilon(True)
 
 g.print_graph()
 
+dfa = g.to_dfa()
+
+dfa.print_graph()
+
+
+dfa.print_drawing_data()
