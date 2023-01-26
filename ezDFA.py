@@ -99,7 +99,7 @@ class graph:
 		
 		def add_vertex(states : list, name : str): #states is a list of this.vertices ready to be combined into a single DFA vertex
 			is_start = True
-			is_final = True
+			is_final = False
 			for state in states:
 				if not state.is_start: #if any of the states is not start, the new vertex is not start
 					is_start = False
@@ -140,7 +140,7 @@ class graph:
 			for cond in self.conds:
 				if not dfa_vertex.has_edge_on(cond):
 					if bad_state == None:
-						bad_state = v('bad', [], is_final=True) #create a bad state
+						bad_state = v('bad', [], is_final=False) #create a bad state
 						dfa_graph.add_vertex(bad_state)
 					dfa_vertex.edges.append(e(dfa_vertex.name, bad_state.name, cond))
 
