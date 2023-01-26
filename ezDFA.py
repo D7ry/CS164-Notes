@@ -35,27 +35,85 @@ class graph:
 		for e in vertex.edges:
 			if e.cond != None and e.cond not in self.conds:
 				self.conds.append(e.cond)
+	
+	def add_edge(self, vertexName, edge):
+		if self.vertices.get(vertexName) == None:
+			print("Warning: vertex with name {} does not exist".format(vertexName))
+			return
+		if edge.cond == None:
+			self.epsilon_edges.append(edge)
+		self.vertices[vertexName].edges.append(edge)
+		#add action
+		if edge.cond != None and edge.cond not in self.conds:
+			self.conds.append(edge.cond)
+	
+	def remove_edge(self, edge):
+		if self.vertices.get(edge.src) == None:
+			print("Warning: vertex with name {} does not exist".format(edge.src))
+			return
+		self.vertices[edge.src].edges.remove(edge)
+		if edge.cond == None:
+			self.epsilon_edges.remove(edge)
+		#add action
 
 	def get_vertex(self, name):
 		return self.vertices.get(name, None)
+	
+	def reduce(self): #remove useless vertices whose outgoing edges are all epsilon
+		toremove = []
+		for vertex in self.vertices.values():
+			out = []
+			is_epsilon = True #if all outgoing edges are epsilon, this means the vertex is useless
+			for edge in vertex.edges:
+				if edge.cond != None:
+					is_epsilon = False
+				if edge.dest not in out:
+					out.append(edge)
+			if is_epsilon:
+				print("removing vertex {} because it is useless".format(vertex.name))
+				if vertex.is_start:
+					for edge in out:
+						self.vertices[edge.dest].is_start = True 
+				edgesToVertex = []
+				for other_vertex in self.vertices.values():
+					if other_vertex == vertex:
+						continue
+					for edge in other_vertex.edges:
+						if edge.dest == vertex.name:
+							edgesToVertex.append(edge)
+				
+				for edge in edgesToVertex:
+					for new_dest in out:
+						print("changing edge {} to transition to {} on {}".format(edge.src, new_dest.dest, edge.cond))
+						self.add_edge(edge.src, e(edge.src, new_dest.dest, edge.cond))
+					self.remove_edge(edge)
+				for out_edge in out:
+					self.remove_edge(out_edge)
+				toremove.append(vertex.name)
+		for name in toremove:
+			self.vertices.pop(name)
+
 
 	#verbose mode prints out all the steps, including adding&removing additional epsilon edges
-	def remove_epsilon(self, verbose = False):
+	def remove_epsilon(self, verbose = False, reduce = True):
 		print("proceeding to remove epsilon edges for graph {}...".format(self.name))
 		while self.epsilon_edges != []:
 			epe = self.epsilon_edges.pop(0)
 			print("processing epsilon edge: " + epe.src + " -> " + epe.dest) if verbose else None
-			v1 = g.vertices[epe.src]
-			v2 = g.vertices[epe.dest]
+			v1 = self.vertices[epe.src]
+			v2 = self.vertices[epe.dest]
 			if v1 == v2: #epsilon edge that transitions into itself, just delete it
 				v1.edges.remove(epe)
-				continue
+				continue					
+
 			for v2e in v2.edges:
 				new_edge = e(v1.name, v2e.dest, v2e.cond)
 				v1.edges.append(new_edge)
 				if v2e.cond == None:
 					self.epsilon_edges.append(new_edge)
 				print("added edge: {} -> {} on {}".format(v1.name, v2e.dest, v2e.cond)) if verbose else None
+
+
 			v1.edges.remove(epe)
 			if v1.is_start:
 				v2.is_start = True
@@ -92,7 +150,7 @@ class graph:
 
 
 	#returns a dfa version of this graph, remove_epsilon must be called first
-	def to_dfa(self):
+	def to_dfa(self, add_bad_state = False):
 
 		print("converting graph {} to dfa...".format(self.name))
 		dfa_graph = graph("dfa_" + self.name)
@@ -134,15 +192,16 @@ class graph:
 			start_name += state.name
 		add_vertex(start_states, start_name)
 
-		bad_state = None
-		#complete the graph by adding all conditions to all vertices
-		for dfa_vertex in dfa_graph.vertices.copy().values(): #make a copy of the keys because we're modifying the dict, this is fine since we're not modifying the keys
-			for cond in self.conds:
-				if not dfa_vertex.has_edge_on(cond):
-					if bad_state == None:
-						bad_state = v('bad', [], is_final=False) #create a bad state
-						dfa_graph.add_vertex(bad_state)
-					dfa_vertex.edges.append(e(dfa_vertex.name, bad_state.name, cond))
+		if add_bad_state:
+			bad_state = None
+			#complete the graph by adding all conditions to all vertices
+			for dfa_vertex in dfa_graph.vertices.copy().values(): #make a copy of the keys because we're modifying the dict, this is fine since we're not modifying the keys
+				for cond in self.conds:
+					if not dfa_vertex.has_edge_on(cond):
+						if bad_state == None:
+							bad_state = v('bad', [], is_final=False) #create a bad state
+							dfa_graph.add_vertex(bad_state)
+						dfa_vertex.edges.append(e(dfa_vertex.name, bad_state.name, cond))
 
 		print("...done converting to dfa")
 
