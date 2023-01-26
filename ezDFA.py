@@ -7,9 +7,14 @@ class e: #edge
 class v: #vertex, edges are only outgoing
 	def __init__(self, name, edges, is_start = False, is_final = False):
 		self.name = name
-		self.edges = edges
+		self.edges = edges #note that mutating this might lead to inaccurate epsilon edge counting
 		self.is_start = is_start
 		self.is_final = is_final
+	def has_edge_on(self, cond):
+		for e in self.edges:
+			if e.cond == cond:
+				return True
+		return False
 
 class graph:
 	def __init__(self, name):
@@ -32,7 +37,7 @@ class graph:
 				self.conds.append(e.cond)
 
 	def get_vertex(self, name):
-		return self.vertices.get(name)
+		return self.vertices.get(name, None)
 
 	#verbose mode prints out all the steps, including adding&removing additional epsilon edges
 	def remove_epsilon(self, verbose = False):
@@ -75,6 +80,7 @@ class graph:
 			print("")
 		print("done. Total vertices: {}, total edges: {}".format(len(self.vertices), edge_count))
 
+	#print out a drawing data useful on https://csacademy.com/app/graph_editor/
 	def print_drawing_data(self):
 		#every vertex name with a new line
 		for v in self.vertices.values():
@@ -84,90 +90,61 @@ class graph:
 			for e in v.edges:
 				print(e.src + " " + e.dest + " " + str(e.cond))
 
+
+	#returns a dfa version of this graph, remove_epsilon must be called first
 	def to_dfa(self):
 
 		print("converting graph {} to dfa...".format(self.name))
 		dfa_graph = graph("dfa_" + self.name)
 		
-		pairs = set() #set of edges that have already been traced
-		traced = set() #set of vertices that have already been traced
-		def trace_vertex(states : list):
-			vertex_name = ""
+		def add_vertex(states : list, name : str): #states is a list of this.vertices ready to be combined into a single DFA vertex
 			is_start = True
 			is_final = True
 			for state in states:
-				vertex_name += state.name
 				if not state.is_start:
 					is_start = False
 				if state.is_final:
 					is_final = True
-			print("tracing vertex: " + vertex_name)
-			if vertex_name == "MG":
-				print("DEBUg")
-
-			edges = [] #outgoing edges
-			for cond in self.conds:
-				next_states = []
+			nexts = [] #vector<pair<name, vector<vertices>>>
+			dfa_edges = [] #outgoing edges
+			for cond in self.conds: #for each condition, find all combinations of next states
+				next = [] #vector<vertices>; these vertices are to be combined into a single DFA vertex
 				next_name = ""
 				for state in states:
 					for edge in state.edges:
 						if edge.cond == cond:
 							vertex = self.get_vertex(edge.dest)
-							if vertex not in next_states:
-								next_states.append(vertex)
+							if vertex not in next:
+								next.append(vertex)
 								next_name += edge.dest
-				hash = vertex_name + '->' + next_name + ' on ' + cond #workaround
-				if next_states != [] and hash not in pairs:
-					pairs.add(hash)
-					edges.append(e(vertex_name, next_name, cond))
-					print("adding edge: " + vertex_name + " -> " + next_name + " on " + cond)
-					if next_name not in traced:
-						traced.add(next_name)
-						trace_vertex(next_states)
-			print("adding vertex: " + vertex_name)
-			if vertex_name == "F":
-				print("debug")
-
-			dfa_graph.add_vertex(v(vertex_name, edges, is_start, is_final))
+				if next != []:
+					dfa_edges.append(e(name, next_name, cond))
+					print("adding edge: ", name + '->' + next_name + ' on ' + cond)
+					nexts.append((next_name, next))
+			print("adding vertex: " + name)
+			dfa_graph.add_vertex(v(name, dfa_edges, is_start, is_final))
+			#add all next vertices
+			for next in nexts:
+				if dfa_graph.get_vertex(next[0]) == None: #if this next state hasn't been added yet
+					add_vertex(next[1], next[0])
 
 		start_states = [v for v in self.vertices.values() if v.is_start]
-		trace_vertex(start_states)
+		start_name = ""
+		for state in start_states:
+			start_name += state.name
+		add_vertex(start_states, start_name)
+
+		bad_state = None
+		#complete the graph by adding all conditions to all vertices
+		for dfa_vertex in dfa_graph.vertices.copy().values(): #make a copy of the keys because we're modifying the dict, this is fine since we're not modifying the keys
+			for cond in self.conds:
+				if not dfa_vertex.has_edge_on(cond):
+					if bad_state == None:
+						bad_state = v('bad', [], is_final=True) #create a bad state
+						dfa_graph.add_vertex(bad_state)
+					dfa_vertex.edges.append(e(dfa_vertex.name, bad_state.name, cond))
+
 		print("...done converting to dfa")
 
 		return dfa_graph
 
-
-		
-
-
-
-g = graph("q2")
-g.add_vertex(v('A', [e('A', 'K'), e('A', 'B')], is_start=True))
-g.add_vertex(v('B', [e('B', 'C'), e('B', 'J')]))
-g.add_vertex(v('C', [e('C', 'E'), e('C', 'H')]))
-g.add_vertex(v('D', [e('D', 'B')]))
-g.add_vertex(v('E', [e('E', 'F', 'a')]))
-g.add_vertex(v('F', [e('F', 'G', 'b')]))
-g.add_vertex(v('G', [e('G', 'D', 'a')]))
-g.add_vertex(v('H', [e('H', 'I', 'b')]))
-g.add_vertex(v('I', [e('I', 'D', 'b')]))
-g.add_vertex(v('J', [e('J', 'Z')]))
-g.add_vertex(v('K', [e('K', 'N'), e('K', 'O')]))
-g.add_vertex(v('L', [e('L', 'M', 'b')]))
-g.add_vertex(v('M', [e('M', 'K')]))
-g.add_vertex(v('N', [e('N', 'L', 'a')]))
-g.add_vertex(v('O', [e('O', 'Z')]))
-g.add_vertex(v('Z', [], is_final=True))
-
-g.print_graph()
-
-g.remove_epsilon(True)
-
-g.print_graph()
-
-dfa = g.to_dfa()
-
-dfa.print_graph()
-
-
-dfa.print_drawing_data()
