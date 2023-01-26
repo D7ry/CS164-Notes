@@ -34,7 +34,8 @@ class graph:
 			print("processing epsilon edge: " + epe.src + " -> " + epe.dest) if verbose else None
 			v1 = g.vertices[epe.src]
 			v2 = g.vertices[epe.dest]
-			if v1 == v2:
+			if v1 == v2: #epsilon edge that transitions into itself, just delete it
+				v1.edges.remove(epe)
 				continue
 			for v2e in v2.edges:
 				new_edge = e(v1.name, v2e.dest, v2e.cond)
