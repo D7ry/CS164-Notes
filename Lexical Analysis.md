@@ -169,5 +169,18 @@ do({{startState, [(epsilon, startState)]}})
 ## REGEX to NFA
 more on [lecture slides](https://drive.google.com/file/d/15Cq6EwE17AmH7rxYtwfncWs2f6fVpOXh/view)
 
+
+## DFA Implementation
+DFA can be implemented by a 2D table, where the rows are the states and the columns are input symbols.  
+For every transition, read transition and skip to another state per the table.
+This implementation is efficient as a jump table.
+
+*In some practices, NFA is eventually used instead of DFA for less space complexity.
+
+## Limits of regular languages
+A finite autometon that runs long enough must repeat states.
+Therefore it can't remember # of times it has visited a particular state, hence for example, it can't recognize a string that contains same number of 0s and 1s.
+
 [^f1]: Finite Autometa - a machine that accepts or rejects strings of symbols and only produces a result after it has read all of its input. It is a finite state machine that has no loops in the sense that there is a finite number of states and every state is reachable from every other state by a finite number of transitions. [Wikipedia](https://en.wikipedia.org/wiki/Finite-state_machine
+
 
