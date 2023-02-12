@@ -1,5 +1,6 @@
+import pandas as pd
 #script I wrote to do my hw
-epsilon = "ε"
+EPSL = "ε" #epsilon
 class Grammar:
 
 	def __init__(self, name : str, non_terminals : set, terminals : set, start : str = "S"):
@@ -7,6 +8,8 @@ class Grammar:
 		for nt in non_terminals:
 			self.productions[nt] = [] # make a new list for each NT to store productions
 		self.terminals = terminals
+		self.terminals.add(EPSL) #add epsilon to terminals automatically
+		self.terminals.add('$') #add end of input to terminals automatically
 		for term in self.terminals:
 			if term in self.productions:
 				raise Exception("Terminal {} is also a non-terminal.".format(term))
@@ -48,8 +51,8 @@ class Grammar:
 				if one_rhs[0] == lhs:
 					found = True
 					break
-			print("Remove left recursion on {} -> {}".format(lhs, rhs))
 			if found: #start removing left recursion
+				print("Remove left recursion on {} -> {}".format(lhs, rhs))
 				# create new non-terminal
 				new_nt = lhs + '\''
 				self.productions[new_nt] = []
@@ -64,10 +67,10 @@ class Grammar:
 						new_nt_prod_rhs.append(new_rhs)
 					else: # add to rhs of old non-terminal
 						to_replace.append(new_rhs)
-				new_nt_prod_rhs.append(epsilon)
+				new_nt_prod_rhs.append(EPSL)
 				self.add_production(new_nt, new_nt_prod_rhs)
 				self.__replace_production(lhs, to_replace)
-		print("...left recursion removed")
+				print("...left recursion removed")
 		self.left_recursion_removed = True
 	
 
@@ -90,6 +93,7 @@ class Grammar:
 		None #tbd
 	
 	def get_ll1(self):
+		print("Generating LL1 table...")
 		if not self.left_recursion_removed:
 			raise Exception("Left recursion not removed.")
 		firsts = dict() #dict<str,set>
@@ -98,7 +102,9 @@ class Grammar:
 		#return a copy of firsts[symbol] if symbol is in firsts, otherwise return an empty set
 		def first(symbol) -> set[str]: 
 			if symbol in self.terminals:
-				return symbol
+				ret = set()
+				ret.add(symbol)
+				return ret
 			return firsts[symbol].copy() if symbol in firsts else set()
 
 		#return a copy of follows[symbol] if symbol is in follows, otherwise return an empty set
@@ -109,8 +115,8 @@ class Grammar:
 			firsts[lhs] = set()
 			rhss = self.productions[lhs]
 			for rhs in rhss:
-				if rhs[0] == epsilon: #assuming if epsilon is the first element, then it is the only element
-					firsts[lhs].add(epsilon)
+				if rhs[0] == EPSL: #assuming if epsilon is the first element, then it is the only element
+					firsts[lhs].add(EPSL)
 				elif rhs[0] in self.terminals:
 					firsts[lhs].add(rhs[0])
 				else: #loop through all symbols in rhs
@@ -122,27 +128,23 @@ class Grammar:
 							firsts[lhs].add(elem)
 							toTheEnd = False
 							break
-						elif elem == epsilon:
-							firsts[lhs].add(epsilon)
+						elif elem == EPSL:
+							firsts[lhs].add(EPSL)
 						else:# elem is y1, y2, y3, etc
 							calc_first(elem) if elem not in firsts else None #get first of elem if not already calculated
-							if epsilon not in firsts[elem]: #if epsilon not in first(Y1), then stop
+							if EPSL not in firsts[elem]: #if epsilon not in first(Y1), then stop
 								firsts[lhs].update(firsts[elem]) #first(X) = first(Y1)
 								toTheEnd = False
 								break #gg
 							firsts_copy = firsts[elem].copy() #must copy because we are modifying the set
-							firsts_copy.remove(epsilon) #remove epsilon
+							firsts_copy.remove(EPSL) #remove epsilon
 							firsts[lhs].update(firsts_copy) #keep going
 					if toTheEnd:
-						firsts[lhs].add(epsilon)
+						firsts[lhs].add(EPSL)
 
-		
 		# firsts
 		for lhs in self.productions.keys():
 			calc_first(lhs)
-		print("Firsts:")
-		print(firsts)
-		print()
 
 		# follows
 		follows[self.start] = {"$"} #start symbol
@@ -166,39 +168,102 @@ class Grammar:
 							link(lhs, Yi)
 						else: #not last element
 							first_Yi_plus_1 = first(rhs[i+1])
-							if epsilon in first_Yi_plus_1: #if epsilon in first(Yi+1), then link follow of follow(Yi+1) to follow of follow(Yi)(transitive property)
+							if EPSL in first_Yi_plus_1: #if epsilon in first(Yi+1), then link follow of follow(Yi+1) to follow of follow(Yi)(transitive property)
 								link(rhs[i+1], Yi)
-								first_Yi_plus_1.remove(epsilon)
+								first_Yi_plus_1.remove(EPSL)
 							follows[Yi].update(first_Yi_plus_1) #follow(Yi) += first(Yi+1)
 					i -= 1
 						
 		#loop through links
 		def update_link(src):
 			for dst in links[src]:
-				print("Linking follow({}) to follow({})".format(src, dst))
+				#print("Linking follow({}) to follow({})".format(src, dst))
 				follows[dst].update(follow(src))
 				if dst in links:
-					print("follow({}) updated, updating links...".format(dst))
+					#print("follow({}) updated, updating links...".format(dst))
 					update_link(dst) #recursively update links
-					print("back to linking follow({})".format(src))
-
+					#print("back to linking follow({})".format(src))
 		for src in links.keys():
 				update_link(src)
-		print("Follows:")
-		print(follows)
-			
+
+		#print out firsts and follows in a table
+		print("Firsts and Follows:")
+		print("Symbol\tFirst\tFollow")
+		non_terms = list(self.non_terminals())
+		non_terms.sort()
+		for symbol in non_terms:
+			print("{}\t{}\t{}".format(symbol, firsts[symbol], follows[symbol]))
+		print()
+
+		# generate ll1 table
+		ll1_table = dict()
+		def ll1_table_add_entry(row, col, rhs:list[str]):
+			print("Adding entry {} -> {} on {} to ll1_table".format(row, "".join(rhs), col))
+			if row not in self.non_terminals():
+				raise Exception("Row {} is not a non-terminal".format(row))
+			if col not in self.terminals:
+				raise Exception("Column {} is not a terminal".format(col))
+			r = "".join(rhs)
+			s = row + " -> " + r
+			if row in ll1_table:
+				ll1_table[row][col] = s
+			else:
+				ll1_table[row] = dict()
+				ll1_table[row][col] = s
+
+
+		for capA, rhss in self.productions.items():
+			print("Processing {} -> ...".format(capA))
+			for rhs in rhss:
+				print("-> {}".format("".join(rhs)))
+				#for each production A -> alpha
+				alpha = rhs[0]
+				rule2 = False
+				#1. Find First(α) and for each terminal in First(α), make entry A –> α in the table.
+				print("first({}) = {}".format(alpha, first(alpha)))
+				for terminal in first(alpha):
+					if terminal == EPSL:
+						rule2 = True
+						continue
+					ll1_table_add_entry(capA, terminal, rhs) #rule 1: add all terminals in first(alpha) to ll1_table
+				#2. If First(α) contains ε (epsilon) as terminal, 
+				# then find the Follow(A) and for each terminal in Follow(A), make entry A –>  ε in the table.
+				if rule2:
+					for terminal in follow(capA):
+						ll1_table_add_entry(capA, terminal, [EPSL])
+
+		return ll1_table
+
+
+
+
+					
+
+def print_ll1(ll1_table):
+	print("LL1 Table:")
+	df = pd.DataFrame(ll1_table).transpose()
+	df.sort_index(inplace=True)
+	print(df.to_string())
 				
+# test = Grammar("test", {"E", "E'", "T", "T'", "F"}, {"(", ")", "id", "+", "*",}, "E")	
 		
-		
-		
+# test.add_production("E", [["T", "E'"]])
+# test.add_production("E'", [["+", "T", "E'"], [EPSL]])
+# test.add_production("T", [["F", "T'"]])
+# test.add_production("T'", [["*", "F", "T'"], [EPSL]])
+# test.add_production("F", [["(", "E", ")"], ["id"]])
+
+# test.remove_left_recursion()
+# test.print(True)
+# ll1_table = test.get_ll1()
+# print_ll1(ll1_table)
+
 
 q1a = Grammar("q1a", {"S", "B", "C"}, {"a", "x", "c"})
 
 q1a.add_production("S", [["S", "a"], ["B"]])
 q1a.add_production("B", [["B", "x", "C"], ["C"]])
-q1a.add_production("C", [["c"], [epsilon]])
+q1a.add_production("C", [["c"], [EPSL]])
 
-q1a.print()
 q1a.remove_left_recursion()
-q1a.print(True)
-q1a.get_ll1()
+print_ll1(q1a.get_ll1())
