@@ -31,4 +31,6 @@ void match-A() {
 }
 ```
 
-This is egregiously inefficient, because we have to try every possible derivation of the string, and we have to try every possible derivation of every sub-string.
+This is egregiously inefficient, because we have to try every possible derivation of the string, and we have to try every possible derivation of every sub-string.  
+
+Problem: left-recursive grammar leads to infinite recursion. Example: `E->E|T`
