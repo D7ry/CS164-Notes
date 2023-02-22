@@ -34,6 +34,9 @@ class Grammar:
 		if lhs not in self.productions:
 			raise Exception("Can't find {} among non-terminals.".format(lhs))
 		for rhs in rhss:
+			for symbol in rhs:
+				if symbol not in self.terminals and not self.is_non_terminal(symbol):
+					raise Exception("Can't find {} among terminals or non-terminals.".format(symbol))
 			self.productions[lhs].append(rhs)
 
 	def __replace_production(self, lhs:str, rhss:list[list[str]]):
@@ -72,6 +75,7 @@ class Grammar:
 				self.__replace_production(lhs, to_replace)
 				print("...left recursion removed")
 		self.left_recursion_removed = True
+
 	
 
 	def print(self, concise=True):
@@ -89,13 +93,25 @@ class Grammar:
 			else:
 				for rhs in self.productions[nt]:
 					print("{} -> {}".format(nt, rhs))
+
+		print("Terminals: ", self.terminals)
+		print("Non-terminals: ", self.productions.keys())
+		print("Start symbol: ", self.start)
+
 	def remove_ambiguity(self):
 		None #tbd
-	
-	def get_ll1(self):
-		print("Generating LL1 table...")
-		if not self.left_recursion_removed:
-			raise Exception("Left recursion not removed.")
+
+	def left_factored(self):
+		for lhs, rhss in self.productions.items():
+			left = set()
+			for rhs in rhss:
+				if rhs[0] in left:
+					return False
+				left.add(rhs[0])
+		return True
+
+	# print and return the firsts and follows
+	def get_firsts_and_follows(self) -> tuple[dict, dict]:
 		firsts = dict() #dict<str,set>
 		follows = dict() #dict<str,set>
 		
@@ -174,17 +190,21 @@ class Grammar:
 							follows[Yi].update(first_Yi_plus_1) #follow(Yi) += first(Yi+1)
 					i -= 1
 						
-		#loop through links
-		def update_link(src):
+		#put follow(src) into follow(dst) for all dst in links[src]
+		def update_link(src, reason = None):
 			for dst in links[src]:
-				#print("Linking follow({}) to follow({})".format(src, dst))
-				follows[dst].update(follow(src))
-				if dst in links:
-					#print("follow({}) updated, updating links...".format(dst))
-					update_link(dst) #recursively update links
-					#print("back to linking follow({})".format(src))
+				if dst != reason:
+					#print("Linking follow({}) to follow({})".format(src, dst))
+					follows[dst].update(follow(src))
+					if dst in links: 
+						#print("follow({}) updated, updating links...".format(dst))
+						update_link(dst, src) #recursively update links
+						#print("back to linking follow({})".format(src))
+				else:
+					None
+					#print("Linking follow({}) to follow({}) skipped because of recursion".format(src, dst))
 		for src in links.keys():
-				update_link(src)
+			update_link(src)
 
 		#print out firsts and follows in a table
 		print("Firsts and Follows:")
@@ -194,6 +214,27 @@ class Grammar:
 		for symbol in non_terms:
 			print("{}\t{}\t{}".format(symbol, firsts[symbol], follows[symbol]))
 		print()
+
+		return firsts, follows
+
+	def get_ll1(self):
+		print("Generating LL1 table...")
+		if not self.left_recursion_removed:
+			raise Exception("Left recursion not removed.")
+		if not self.left_factored():
+			raise Exception("Left factoring not done.")
+		#return a copy of firsts[symbol] if symbol is in firsts, otherwise return an empty set
+		firsts, follows = self.get_firsts_and_follows()
+		def first(symbol) -> set[str]: 
+			if symbol in self.terminals:
+				ret = set()
+				ret.add(symbol)
+				return ret
+			return firsts[symbol].copy() if symbol in firsts else set()
+
+		#return a copy of follows[symbol] if symbol is in follows, otherwise return an empty set
+		def follow(symbol) -> set[str]:
+			return follows[symbol].copy() if symbol in follows else set()
 
 		# generate ll1 table
 		ll1_table = dict()
@@ -259,11 +300,50 @@ def print_ll1(ll1_table):
 # print_ll1(ll1_table)
 
 
-q1a = Grammar("q1a", {"S", "B", "C"}, {"a", "x", "c"})
+# q1a = Grammar("q1a", {"S", "B", "C"}, {"a", "x", "c"})
 
-q1a.add_production("S", [["S", "a"], ["B"]])
-q1a.add_production("B", [["B", "x", "C"], ["C"]])
-q1a.add_production("C", [["c"], [EPSL]])
+# q1a.add_production("S", [["S", "a"], ["B"]])
+# q1a.add_production("B", [["B", "x", "C"], ["C"]])
+# q1a.add_production("C", [["c"], [EPSL]])
 
-q1a.remove_left_recursion()
-print_ll1(q1a.get_ll1())
+# q1a.remove_left_recursion()
+# q1a.print(True)
+# print_ll1(q1a.get_ll1())
+
+#not left factored
+# q1b = Grammar("q1b", {"L"}, {"int", "+", "*", "(", ")"}, "L")
+# q1b.add_production("L", [["int"], ["int", "+", "L"], ["int", "*", "L"], ["(", "L", ")"]])
+# q1b.remove_left_recursion()
+# print_ll1(q1b.get_ll1())
+
+# q1b = Grammar("q1b", {"L", "L'"}, {"int", "+", "*", "(", ")"}, "L")
+# q1b.add_production("L", [["int", "L'"], ["(","L",")"]])
+# q1b.add_production("L'", [["+", "L"], ["*", "L"], [EPSL]])
+# q1b.remove_left_recursion()
+# q1b.print()
+# print_ll1(q1b.get_ll1())
+
+# q1c = Grammar("q1c", {"A", "A'"}, {"bool", "or", "and"}, "A")
+# q1c.add_production("A", [["bool", "A'"], ["and", "bool"]])
+# q1c.add_production("A'", [["or", "bool"], [EPSL]])
+# q1c.print()
+# q1c.remove_left_recursion()
+# print_ll1(q1c.get_ll1())
+
+# q2 = Grammar("Q2", {"A", "B", "C"}, {"*", "(", ")", "int", "+"}, "A")
+# q2.add_production("A", [["A", "*", "B"], ["C"]])
+# q2.add_production("B", [["B", "+", "C"], ["C"]])
+# q2.add_production("C", [["(", "B", ")"], ["int"]])
+# q2.print()
+# q2.remove_left_recursion()
+# q2.print()
+# print_ll1(q2.get_ll1())
+
+q5 = Grammar("Q5", {"S", "B", "C", "D", "E"}, {"a", "t", "o", "p", "m"}, "S")
+q5.add_production("S", [["B", "a", "t"], ["C", "o", "p"]])
+q5.add_production("B", [["D"]])
+q5.add_production("C", [["E"]])
+q5.add_production("D", [["m"]])
+q5.add_production("E", [["m"]])
+q5.print()
+q5.get_firsts_and_follows()

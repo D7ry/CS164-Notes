@@ -34,7 +34,7 @@ A CFG consists of: `G = (N, T, S, R)`
 - A set of non-terminals N
 - A set of termianls T
   - Terminals can never be replaced by another symbol
-- A start symbol S
+- A start symbol S, which must be an element of N
 - A set of productions R
 
 ### Key Idea:

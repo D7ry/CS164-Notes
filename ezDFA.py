@@ -216,7 +216,7 @@ test.connect("I", "C")
 test.connect("J", "D")
 test.print()
 test.reduce_epsilon()
-test.remove_epsilon()
+#test.remove_epsilon()
 test.print()
 
 #test_dfa = test.to_dfa()
