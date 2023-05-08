@@ -28,3 +28,26 @@ Solution: Do multiple passes over the program.
 
 
 ## Type Checking
+
+We use **rule of inference** to check types.
+For example, if e<sub>1</sub> has type int and e<sub>2</sub> has type int, then e<sub>1</sub> + e<sub>2</sub> has type int.
+
+For chocopy, inference rules are written as:
+(e<sub>1</sub>:int ^ e<sub>2</sub>:int) => e<sub>1</sub> + e<sub>2</sub>:int
+
+Conventional inference rules are written as:
+$$\frac{rules}{conclusion}$$
+
+**Type Checking** proves fact about e : T
+
+
+### Static v. Dynamic Types
+
+review
+**Static Type** is the type of an expression that is known at compile time.
+**Dynamic Type** is the type of an expression that is known at run time.
+
+ **Soundness Theorem** - an object's dynamic type is always a subtype of its static type.
+
+**Least Upper Bound(LUB)** - the closest common ancestor of 2 types in the inheritance hierarchy. LUB is useful when we look for the type of an expression that has multiple possible types e.g. concatenation of 2 lists.
+
