@@ -51,3 +51,8 @@ if `X` has label `A->b on tok`, reduce `A->b`
 else, error.
 
 ## Generating the DFA
+
+**LR(1) item**  - a production rule with a dot in it, indicating the position of the next symbol to be read, and a lookahead terminal symbol.
+
+
+e.g.: E-> E + (e) can be turned into E-> * E + (e) + any terminal symbol

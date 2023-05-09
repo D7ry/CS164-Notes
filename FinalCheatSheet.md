@@ -1,5 +1,4 @@
 #### LL1
-![NFAs](NFAs.png)
 Left recursion: A -> Ax|y 
 change to: A->yA', A'->xA'|epsilon
 
@@ -39,6 +38,8 @@ Parse table can have at most one production rule per cell, otherwise, there is c
 Shift-reduce: shift the . on next token t, or reduce on t when the . is on the right end of a production
 Reduce-reduce: when the . is on the right end of 2 productions that can be both reduced on t.
 
+#### Operational Semantics
+
 #### Garbage Collection
 Mark and Sweep:   
 - todo-list/free list can be too large. Solution: storing them in objects directly as auxiliary data.
@@ -62,3 +63,27 @@ not n-colorable if is (n+1) clique
 after spilling:
 before use: f := load fa (only after this f is live)
 after define: store f, fa (only before this f is live)
+
+#### Optimization
+
+- Algebraic Simplicication
+  - To delete:
+    - x := x + 0
+	- x := x * 1
+  - To simplify:
+    - x := x * 0 => x := 0
+    - y := y ** 2 => y := y * y
+    - x := x * 8 => x := x << 3
+  - Constant Folding
+    - x := y op z, y and z are constants, x := (y op z)
+- Common Subexpression Elimination
+  - x := y + z, w := y + z =>
+  - x := y + z, w := x
+- Copy Propagation
+  - a := b, x := y op a =>
+  - a := b, x := y op b
+- Dead Code Elimination'
+  - elminate w := rhs if w doesn't appear anywhere else
+
+Forward analysis: everything up to p
+Backward analysis: everything after p
